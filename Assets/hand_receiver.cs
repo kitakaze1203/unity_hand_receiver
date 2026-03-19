@@ -9,8 +9,12 @@ using System.Threading;
 public class hand_receiver : MonoBehaviour
 {
     public int port = 20000;
+    public int send_port = 22222;
     private UdpClient udpClient;
-    private Thread  receiveThread;
+    private Thread receiveThread;
+    private bool running = true;
+    Vector3 euler = new Vector3();
+    Vector3 cor_euler = new Vector3();
     [SerializeField] private string send_IP;
 
     // Start is called before the first frame update
@@ -25,12 +29,12 @@ public class hand_receiver : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
+        transform.eulerAngles = euler;
     }
 
     private void ReceiveData()
     {
-        while(true)
+        while (running)
         {
             try
             {
@@ -41,10 +45,23 @@ public class hand_receiver : MonoBehaviour
                 string[] split = text.Split(',');
                 if (split.Length == 9)
                 {
-                    Vector3 euler = new Quaternion(float.Parse(split[0]), float.Parse(split[1]), float.Parse(split[2]), float.Parse(split[3])).eulerAngles;
-                    int power_x = (int)euler.x * 256 / 90;
-                    int power_y = (int)euler.z * 256 / 90;
-                    int power_z = (int)euler.y * 256 / 90;
+                    euler = new Quaternion(float.Parse(split[0]), float.Parse(split[1]), float.Parse(split[2]), float.Parse(split[3])).eulerAngles;
+                    cor_euler = euler;
+                    if (cor_euler.x < 360 && cor_euler.x > 180)
+                    {
+                        cor_euler.x = cor_euler.x - 360;
+                    }
+                    if (cor_euler.y < 360 && cor_euler.y > 180)
+                    {
+                        cor_euler.y = cor_euler.y - 360;
+                    }
+                    if (cor_euler.z < 360 && cor_euler.z > 180)
+                    {
+                        cor_euler.z = cor_euler.z - 360;
+                    }
+                    int power_x = (int)cor_euler.x * 256 / 90;
+                    int power_y = (int)cor_euler.z * 256 / 90;
+                    int power_z = (int)cor_euler.y * 256 / 90;
                     string message = $"{power_x},{power_y},{power_z},{split[4]},{split[5]},{split[6]},{split[7]},{split[8]}";
                     Debug.Log(message);
                     byte[] send_data = Encoding.UTF8.GetBytes(message);
@@ -52,17 +69,34 @@ public class hand_receiver : MonoBehaviour
                     {
                         udpClient.Send(send_data, send_data.Length, send_IP, port);
                     }
-                    catch { /* 送信エラー無視 */ }
+                    catch { Debug.Log("senderror"); }
                 }
             }
-            catch (System.Exception e) { Debug.LogWarning(e); }
+            catch (System.Threading.ThreadAbortException)
+            {
+                // スレッド破棄時の例外なので何もしない
+            }
+            catch (System.Net.Sockets.SocketException)
+            {
+                // udpClient.Close() 時に発生するので、停止中なら無視する
+                if (running) Debug.LogWarning("Socket Error occurred.");
+            }
+            catch (System.Exception e)
+            {
+                // それ以外の本当のエラーだけログに出す
+                if (running) Debug.LogWarning(e);
+            }
         }
     }
 
-    void OnApplicationQuit()
+    void OnDisable()
     {
-        if (receiveThread != null) receiveThread.Abort();
-        udpClient.Close();
+        running = false;
+        if (udpClient != null) udpClient.Close();
+        if (receiveThread != null)
+        {
+            if (!receiveThread.Join(100)) receiveThread.Abort();
+        }
     }
 
 }
