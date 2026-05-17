@@ -258,7 +258,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   port: 20000
   send_port: 22222
-  send_IP: 127.0.0.1
+  send_IP: 192.168.11.4
+  m1_coe: 50
+  m2_coe: 50
+  m3_coe: 50
+  m4_coe: 50
+  m5_coe: 50
+  air_coe: 50
   state: {fileID: 466033722}
 --- !u!23 &332607944
 MeshRenderer:

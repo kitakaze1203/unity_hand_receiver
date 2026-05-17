@@ -12,17 +12,25 @@ public class hand_receiver : MonoBehaviour
     public int port = 20000;
     public int send_port = 22222;
     private UdpClient udpClient;
+    private UdpClient send_udpClient;
     private Thread receiveThread;
     private bool running = true;
     Vector3 euler = new Vector3();
     Vector3 cor_euler = new Vector3();
     [SerializeField] private string send_IP;
+    [SerializeField] private int m1_coe;
+    [SerializeField] private int m2_coe;
+    [SerializeField] private int m3_coe;
+    [SerializeField] private int m4_coe;
+    [SerializeField] private int m5_coe;
+    [SerializeField] private int air_coe;
     [SerializeField] TextMeshProUGUI state;
     private string message;
     // Start is called before the first frame update
     void Start()
     {
         udpClient = new UdpClient(port);
+        send_udpClient = new UdpClient();
         receiveThread = new Thread(new ThreadStart(ReceiveData));
         receiveThread.IsBackground = true;
         receiveThread.Start();
@@ -55,18 +63,25 @@ public class hand_receiver : MonoBehaviour
                     if (cor_euler.y < 360 && cor_euler.y > 180) cor_euler.y = cor_euler.y - 360;
                     if (cor_euler.z < 360 && cor_euler.z > 180) cor_euler.z = cor_euler.z - 360;
                     
-                    int power_x = (int)(cor_euler.x * 256 / 90);
-                    int power_y = (int)(cor_euler.z * 256 / 90);
+                    int power_x = (int)(-(cor_euler.z * 256 / 90));
+                    int power_y = (int)(cor_euler.x * 256 / 90);
                     int power_z = (int)(cor_euler.y * 256 / 90);
 
                     power_x = deadzone(power_x);
                     power_y = deadzone(power_y);
                     power_z = deadzone(power_z);
 
+                    split[4] = (int.Parse(split[4]) * m1_coe).ToString();
+                    split[5] = (int.Parse(split[5]) * m2_coe).ToString();
+                    split[6] = (int.Parse(split[6]) * m3_coe).ToString();
+                    split[7] = (int.Parse(split[7]) * m4_coe).ToString();
+                    split[8] = (int.Parse(split[8]) * m5_coe).ToString();
+                    split[9] = (int.Parse(split[9]) * air_coe).ToString();
+
                     message = $"{power_x},{power_y},{power_z},{split[4]},{split[5]},{split[6]},{split[7]},{split[8]},{split[9]}";
                     byte[] send_data = Encoding.UTF8.GetBytes(message);
                     
-                    try { udpClient.Send(send_data, send_data.Length, send_IP, port); }
+                    try { send_udpClient.Send(send_data, send_data.Length, send_IP, send_port); }
                     catch { state.text = "senderror"; }   
                 }
             }
